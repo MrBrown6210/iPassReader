@@ -1,0 +1,1 @@
+export 'ipass_model.dart';
