@@ -187,8 +187,7 @@ class _DeviceScreen extends State<DeviceScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          Text('${(new DateTime.fromMillisecondsSinceEpoch(date * 1000)).toString()}'),
-                          Text('($date)'),
+                          Text('${convertTimestampToDate(new DateTime.fromMillisecondsSinceEpoch(date * 1000))}'),
                         ],
                       ),
                       CircleButton(icon: Icons.upload_file, iconSize: 22, onPressed: () {
@@ -361,6 +360,10 @@ class XXX extends StatelessWidget {
   }
 }
 
+String convertTimestampToDate(DateTime dateTime) {
+  return '${dateTime.year}-${dateTime.month}-${dateTime.day} ${dateTime.hour}:${dateTime.minute}:${dateTime.second}';
+}
+
 class BoxList extends StatelessWidget {
 
   final Data data;
@@ -395,10 +398,10 @@ class BoxList extends StatelessWidget {
             ),
           ),
           Text(
-            'อยู่ในระยะเป็นเวลา ${convertTimestampToTime(data.stayInMilliSecond)} วินาที'
+            'อยู่ในระยะเป็นเวลา ${convertTimestampToTime(data.stayInMilliSecond)}'
           ),
           Text(
-            'ตรวจสอบเสร็จเมื่อ ${(new DateTime.fromMillisecondsSinceEpoch(data.timestamp * 1000)).toString()}'
+            'ออกไปเมื่อ ${convertTimestampToDate(new DateTime.fromMillisecondsSinceEpoch(data.timestamp * 1000))}'
           ),
         ],
       ),
