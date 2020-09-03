@@ -20,6 +20,9 @@ class _HomeScreen extends State<HomeScreen> {
 
   bool isScanning = false;
 
+  bool isConnectingDevice = false;
+  int connectingIndex = -1;
+
   @override
   void initState() {
     super.initState();
@@ -42,6 +45,8 @@ class _HomeScreen extends State<HomeScreen> {
   }
 
   void scan() async {
+    if (isScanning) return;
+    if (isConnectingDevice) return;
     setState(() {
       isScanning = true;
     });
@@ -53,47 +58,6 @@ class _HomeScreen extends State<HomeScreen> {
     //   isScanning = true;
     //   isScanning = false;
     // });
-  }
-
-  void testHttp() async {
-    List<Data> x = [
-      Data(id: "id", timestamp: 2000, stayInMilliSecond: 15000),
-      Data(id: "idx", timestamp: 2000, stayInMilliSecond: 15000)
-    ];
-    var res = await http.post(
-      'http://128.199.205.55:3030/records',
-      headers: <String, String>{
-        'Content-Type': 'application/json',
-      },
-      // body: json.encode({
-      //   'device': "xxx",
-      //   'data': [
-      //     {
-      //       "id": x.id,
-      //       "timestamp": x.timestamp,
-      //       "stayInMilliSecond": x.stayInMilliSecond
-      //     },
-      //   ]
-      // }),
-      body: json.encode({
-        'device': "xxx",
-        'data': x.map((e) {
-          return {
-            "id": e.id,
-            "stayInMilliSecond": e.stayInMilliSecond,
-            "timestamp": e.timestamp
-          };
-        }).toList()
-      }),
-    )
-    // .then((value) {
-    //   print('aaaa ${value.statusCode}');
-    //   print('aaaa ${value.body}');
-    // })
-    .catchError((onError) {
-      print(onError.toString());
-    });
-    print(res.body);
   }
 
   @override
@@ -134,16 +98,42 @@ class _HomeScreen extends State<HomeScreen> {
                   child: ListTile(
                     title: Text(list[index].device.name),
                     subtitle: Text(list[index].device.id.toString()),
-                    trailing: Text('View'),
-                    onTap: () {
+                    trailing: Text(index == connectingIndex ? 'Connecting' : 'View'),
+                    onTap: () async {
+
+                      if (isConnectingDevice) return;
+
+                      setState(() {
+                        isConnectingDevice = true;
+                        connectingIndex = index;
+                      });
+
                       List<List<int>> x = [];
                       list[index].advertisementData.manufacturerData.forEach((key, value) {
                         x.add(value);
                         print(value);
                         Uint8List a = Uint8List.fromList(value);
                         print((a[0] << 8) + a[1]);
+                        // TODO: Find Beacon UUID
                       });
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => DeviceScreen(result: list[index])));
+
+                      try {
+                        print('connecting');
+                        list[index].device.connect(timeout: Duration(seconds: 3));
+                        await list[index].device.state.firstWhere((s) => s == BluetoothDeviceState.connected).timeout(Duration(seconds:  3));
+                        // await list[index].device.state.firstWhere(((state) => state == BluetoothDeviceState.connected));
+                        Navigator.push(context, MaterialPageRoute(builder: (context) => DeviceScreen(result: list[index])));
+                      } on Exception catch (exception) {
+                        print('exception $exception');
+                      } catch (error) {
+                        print('error: $error');
+                      } finally {
+                        setState(() {
+                          isConnectingDevice = false;
+                          connectingIndex = -1;
+                        });
+                        print('finally');
+                      }
                       // print(list[index].advertisementData.manufacturerData.map((key, value) => value)); print(utf8.decode([2]));
                     },
                   ),

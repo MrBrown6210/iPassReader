@@ -59,9 +59,62 @@ class _DeviceScreen extends State<DeviceScreen> {
   @override
   void initState() {
     super.initState();
-    widget.result.device.connect(timeout: Duration(seconds: 4)).then((_) {
+    // widget.result.device.connect(timeout: Duration(seconds: 4)).then((_) {
       refreshData();
-    });
+    // });
+  }
+
+  String startFlag = 'START';
+  String endFlag = 'END';
+  String rowData = '';
+
+  Future<void> updateRowData(BluetoothCharacteristic characteristic) async {
+    List<int> data =  await characteristic.read();
+    String rawData = utf8.decode(data);
+    print('rawData: $rawData');
+    if (rawData == startFlag) {
+      rowData = '';
+      setState(() {
+        rawData = '';
+      });
+      await updateRowData(characteristic);
+      return;
+    }
+
+    if (rawData == endFlag) {
+      List<Data> records = recordsFromRowData(rowData);
+      print('records: ${records.toString()}');
+      setState(() {
+        isDataEnable = true;
+        datas = records;
+      });
+      return;
+    }
+
+    rowData += rawData;
+
+    await updateRowData(characteristic);
+  }
+
+  List<Data> recordsFromRowData(String rowData) {
+    List<String> splits = rowData.split(";");
+    List<Data> ds = [];
+    for (var split in splits) {
+      // split.indexOf('@');
+      if (split == "") {
+        continue;
+      }
+      String uuid = split.substring(split.indexOf('@') + 1, split.indexOf(':'));
+      int timeStay = int.tryParse(split.substring(split.indexOf(':') + 1, split.indexOf('?')));
+      int timeEnd = int.tryParse(split.substring(split.indexOf('?') + 1, split.length));
+      // print('time $timeEnd');
+      // print('timex ${split.substring(split.indexOf('?') + 1, split.length)}}');
+      if (timeEnd == null || timeStay == null) continue;
+      Data data = Data(id: uuid, timestamp: timeEnd, stayInMilliSecond: timeStay * 1000);
+      print('data::: ${data.stayInMilliSecond}');
+      ds.add(data);
+    }
+    return ds;
   }
 
   void refreshData() async {
@@ -70,60 +123,33 @@ class _DeviceScreen extends State<DeviceScreen> {
     for (var service in services) {
       print('x ${service.characteristics.map((e) => e.uuid.toString())}');
       for (var characteristic in service.characteristics) {
-        List<int> data = await characteristic.read();
-        print('data ${utf8.decode(data)}');
-        print('uuid ${characteristic.uuid}');
-        if (characteristic != null) {
-          // print('rowDataxxx');
-          print(characteristic.uuid.toString());
-          if (characteristic.uuid.toString() == rowDataUUID) {
-            // print('rowData');
-            String rawData = utf8.decode(data);
-            List<String> splits = rawData.split(";");
-            List<Data> ds = [];
-            for (var split in splits) {
-              // split.indexOf('@');
-              if (split == "") {
-                continue;
-              }
-              String uuid = split.substring(split.indexOf('@') + 1, split.indexOf(':'));
-              int timeStay = int.tryParse(split.substring(split.indexOf(':') + 1, split.indexOf('?')));
-              int timeEnd = int.tryParse(split.substring(split.indexOf('?') + 1, split.length));
-              // print('time $timeEnd');
-              // print('timex ${split.substring(split.indexOf('?') + 1, split.length)}}');
-              if (timeEnd == null || timeStay == null) continue;
-              Data data = Data(id: uuid, timestamp: timeEnd, stayInMilliSecond: timeStay);
-              ds.add(data);
-            }
+
+        if (characteristic == null) {
+          continue;
+        }
+
+        if (characteristic.uuid.toString() == rowDataUUID) {
+          updateRowData(characteristic);
+        }
+
+        if (characteristic.uuid.toString() == timeUUID) {
+          List<int> data =  await characteristic.read();
+          String rawData = utf8.decode(data);
+          var dateData = int.tryParse(rawData);
+          if (dateData != null) {
             setState(() {
-              isDataEnable = true;
-              datas = ds;
+              characteristicTime = characteristic;
+              isDateEnable = true;
+              date = dateData;
             });
           }
+        }
 
-          if (characteristic.uuid.toString() == timeUUID) {
-            String rawData = utf8.decode(data);
-            var dateData = int.tryParse(rawData);
-            if (dateData != null) {
-              setState(() {
-                characteristicTime = characteristic;
-                isDateEnable = true;
-                date = dateData;
-              });
-            }
-          }
-
-          if (characteristic.uuid.toString() == commandUUID) {
-            setState(() {
-              characteristicCommand = characteristic;
-              isCommandEnable = true;
-            });
-          }
-
-          // IPass ipass = IPass(data: data, characteristic: characteristic);
-          // print('${characteristic.uuid}');
-          // print('data: $data');
-          // _characteristicsData.add(ipass);
+        if (characteristic.uuid.toString() == commandUUID) {
+          setState(() {
+            characteristicCommand = characteristic;
+            isCommandEnable = true;
+          });
         }
       }
     }
