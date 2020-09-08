@@ -1,13 +1,14 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 // import 'package:flutter_blue/gen/flutterblue.pbserver.dart';
 import 'package:hello_world/models/models.dart';
 import 'package:hello_world/widgets/circle_button.dart';
-import 'package:http/http.dart' as http;
 
 String rowDataUUID = "00002ad1-0000-1000-8000-00805f9b34fb";
+String identifyUUID = "00002ac3-0000-1000-8000-00805f9b34fb";
 String timeUUID = "00002a0f-0000-1000-8000-00805f9b34fb";
 String commandUUID = "00002b26-0000-1000-8000-00805f9b34fb";
 
@@ -53,6 +54,8 @@ class _DeviceScreen extends State<DeviceScreen> {
   BluetoothCharacteristic characteristicCommand;
 
   bool isUploading = false;
+
+  String uuid = "";
 
   final commandTextFieldController = TextEditingController();
 
@@ -119,6 +122,7 @@ class _DeviceScreen extends State<DeviceScreen> {
 
   void refreshData() async {
     List<BluetoothService> services = await widget.result.device.discoverServices();
+    print('i ${widget.result.advertisementData.toString()}');
     List<IPass> _characteristicsData = [];
     for (var service in services) {
       print('x ${service.characteristics.map((e) => e.uuid.toString())}');
@@ -132,10 +136,16 @@ class _DeviceScreen extends State<DeviceScreen> {
           updateRowData(characteristic);
         }
 
+        if (characteristic.uuid.toString() == identifyUUID) {
+          List<int> rawData =  await characteristic.read();
+          String data = utf8.decode(rawData);
+          uuid = data;
+        }
+
         if (characteristic.uuid.toString() == timeUUID) {
-          List<int> data =  await characteristic.read();
-          String rawData = utf8.decode(data);
-          var dateData = int.tryParse(rawData);
+          List<int> rawData =  await characteristic.read();
+          String data = utf8.decode(rawData);
+          var dateData = int.tryParse(data);
           if (dateData != null) {
             setState(() {
               characteristicTime = characteristic;
@@ -307,28 +317,57 @@ class _DeviceScreen extends State<DeviceScreen> {
                         isUploading = true;
                       });
 
-                      var url = "http://128.199.205.55:3030/records";
-                      var res = await http.post(
-                        url,
-                        headers: <String, String>{
-                          'Content-Type': 'application/json',
-                        },
-                        body: json.encode({
-                          'device': widget.result.device.name,
-                          'data': datas.map((data) {
-                            return {
-                              "id": data.id,
-                              "stayInMilliSecond": data.stayInMilliSecond,
-                              "timestamp": data.timestamp
-                            };
-                          }).toList()
-                        })
-                      ).catchError((onError) {print(onError); isUploading = false;});
-                      setState(() {
-                        isUploading = false;
-                      });
-                      print(res.statusCode);
-                      print(res.body);
+                      try {
+                        var dio = Dio();
+                        var res = await dio.post(
+                          "http://172.16.2.149:3030/tracks/multiple",
+                          data: {
+                            "items": datas.map((data) {
+                              return {
+                                'stay': data.stayInMilliSecond,
+                                'owner': uuid,
+                                'found': data.id,
+                                'timestamp': data.timestamp
+                              };
+                            }).toList()
+                          }
+                        );
+                        print('result: ${res.data}');
+                        characteristicCommand.write(utf8.encode("clear"));
+                        refreshData();
+                      } on DioError catch (e) {
+                        if (e.response != null) {
+                          print(e.response.data);
+                        }
+                        print('error: ${e.message}');
+                      } finally {
+                        setState(() {
+                          isUploading = false;
+                        });
+                      }
+
+                      // var url = "http://128.199.205.55:3030/records";
+                      // var res = await http.post(
+                      //   url,
+                      //   headers: <String, String>{
+                      //     'Content-Type': 'application/json',
+                      //   },
+                      //   body: json.encode({
+                      //     'device': widget.result.device.name,
+                      //     'data': datas.map((data) {
+                      //       return {
+                      //         "id": data.id,
+                      //         "stayInMilliSecond": data.stayInMilliSecond,
+                      //         "timestamp": data.timestamp
+                      //       };
+                      //     }).toList()
+                      //   })
+                      // ).catchError((onError) {print(onError); isUploading = false;});
+                      // setState(() {
+                      //   isUploading = false;
+                      // });
+                      // print(res.statusCode);
+                      // print(res.body);
                     },
                   ),  
                 )
@@ -374,17 +413,17 @@ class _DeviceScreen extends State<DeviceScreen> {
 }
 
 
-class XXX extends StatelessWidget {
-  final List<BluetoothCharacteristic> characteristics;
+// class XXX extends StatelessWidget {
+//   final List<BluetoothCharacteristic> characteristics;
 
-  const XXX({Key key, this.characteristics}) : super(key: key);
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: characteristics.map((e) => Text(e.toString())).toList(),
-    );
-  }
-}
+//   const XXX({Key key, this.characteristics}) : super(key: key);
+//   @override
+//   Widget build(BuildContext context) {
+//     return Column(
+//       children: characteristics.map((e) => Text(e.toString())).toList(),
+//     );
+//   }
+// }
 
 String convertTimestampToDate(DateTime dateTime) {
   return '${dateTime.year}-${dateTime.month}-${dateTime.day} ${dateTime.hour}:${dateTime.minute}:${dateTime.second}';
@@ -435,12 +474,12 @@ class BoxList extends StatelessWidget {
   }
 }
 
-class CarJson {
-  String OptionID;
-  CarJson(this.OptionID);
-  Map<String, dynamic> TojsonData() {
-    var map = new Map<String, dynamic>();
-    map["OptionID"] = OptionID;
-    return map;
-  }
-}
+// class CarJson {
+//   String OptionID;
+//   CarJson(this.OptionID);
+//   Map<String, dynamic> TojsonData() {
+//     var map = new Map<String, dynamic>();
+//     map["OptionID"] = OptionID;
+//     return map;
+//   }
+// }

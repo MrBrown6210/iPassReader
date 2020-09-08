@@ -7,6 +7,7 @@ import 'package:hello_world/screens/screens.dart';
 import 'package:hello_world/widgets/circle_button.dart';
 
 import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -84,6 +85,48 @@ class _HomeScreen extends State<HomeScreen> {
               CircleButton(icon: isScanning ? Icons.panorama_fish_eye_outlined : Icons.search, iconSize: 30, onPressed: () {
                 if (isScanning) return;
                 print('search'); scan(); 
+              }),
+              CircleButton(icon: Icons.add_link, iconSize: 30, onPressed: () async {
+                print("dio");
+                try {
+                  var dio = Dio();
+                  var res = await dio.post(
+                    "http://192.168.1.105:3030/tracks/multiple",
+                    data: {
+                      "items": [
+                        {
+                          'stay': 12000,
+                          'owner': 't1',
+                          'found': 't2',
+                          'timestamp': 1598939356
+                        },
+                        {
+                          'stay': 12000,
+                          'owner': 't2',
+                          'found': 't3',
+                          'timestamp': 1598939356
+                        },
+                      ]
+                    }
+                  );
+                  print('test $res');
+                } on DioError catch(e) {
+                  if (e.response != null) {
+                    print(e.response.data);
+                  }
+                  print('error: ${e.message}');
+                }
+                // var url = "http://128.199.205.55:3030/recordsxad";
+                // var res = await http.post(
+                //   url,
+                //   headers: <String, String>{
+                //     'Content-Type': 'application/json',
+                //   },
+                //   body: json.encode({
+                //     'owner': 'x'
+                //   })
+                // ).catchError((onError) { print('error: ${onError.toString()}'); });
+                // print('res $res');
               })
             ],
           ),
