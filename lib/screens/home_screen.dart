@@ -51,7 +51,7 @@ class _HomeScreen extends State<HomeScreen> {
     setState(() {
       isScanning = true;
     });
-    await blue.startScan(timeout: Duration(seconds: 4));
+    await blue.startScan(timeout: Duration(seconds: 15));
     setState(() {
       isScanning = false;
     });
@@ -162,8 +162,8 @@ class _HomeScreen extends State<HomeScreen> {
 
                       try {
                         print('connecting');
-                        list[index].device.connect(timeout: Duration(seconds: 3));
-                        await list[index].device.state.firstWhere((s) => s == BluetoothDeviceState.connected).timeout(Duration(seconds:  3));
+                        list[index].device.connect(timeout: Duration(seconds: 15));
+                        await list[index].device.state.firstWhere((s) => s == BluetoothDeviceState.connected).timeout(Duration(seconds: 15));
                         // await list[index].device.state.firstWhere(((state) => state == BluetoothDeviceState.connected));
                         Navigator.push(context, MaterialPageRoute(builder: (context) => DeviceScreen(result: list[index])));
                       } on Exception catch (exception) {

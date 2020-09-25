@@ -28,12 +28,12 @@ class DeviceScreen extends StatefulWidget {
 
 class Data {
   final String id;
-  final int timestamp;
+  final int leaveAt;
   final int stayInMilliSecond;
 
   const Data({
     this.id,
-    this.timestamp,
+    this.leaveAt,
     this.stayInMilliSecond,
   });
 }
@@ -86,7 +86,6 @@ class _DeviceScreen extends State<DeviceScreen> {
 
     if (rawData == endFlag) {
       List<Data> records = recordsFromRowData(rowData);
-      print('records: ${records.toString()}');
       setState(() {
         isDataEnable = true;
         datas = records;
@@ -107,13 +106,21 @@ class _DeviceScreen extends State<DeviceScreen> {
       if (split == "") {
         continue;
       }
-      String uuid = split.substring(split.indexOf('@') + 1, split.indexOf(':'));
-      int timeStay = int.tryParse(split.substring(split.indexOf(':') + 1, split.indexOf('?')));
-      int timeEnd = int.tryParse(split.substring(split.indexOf('?') + 1, split.length));
-      // print('time $timeEnd');
-      // print('timex ${split.substring(split.indexOf('?') + 1, split.length)}}');
-      if (timeEnd == null || timeStay == null) continue;
-      Data data = Data(id: uuid, timestamp: timeEnd, stayInMilliSecond: timeStay * 1000);
+
+      RegExp exp = new RegExp(r"\@([\S]{36}):([0-9]+)\?([0-9]+)");
+      RegExpMatch match = exp.firstMatch(split);
+      if (match == null) continue;
+      print("1--${match.group(0)}");
+      print("2--${match.group(1)}");
+      print("3--${match.group(2)}");
+      print("4--${match.group(3)}");
+
+      String uuid = match.group(1);
+      int stayTime = int.tryParse(match.group(2));
+      int endTime = int.tryParse(match.group(3));
+
+      if (stayTime == null || endTime == null || uuid == null) continue;
+      Data data = Data(id: uuid, leaveAt: endTime, stayInMilliSecond: stayTime * 1000);
       print('data::: ${data.stayInMilliSecond}');
       ds.add(data);
     }
@@ -325,15 +332,15 @@ class _DeviceScreen extends State<DeviceScreen> {
                             "items": datas.map((data) {
                               return {
                                 'stay': data.stayInMilliSecond,
-                                'owner': uuid,
+                                'owner': uuid.toLowerCase(),
                                 'found': data.id,
-                                'timestamp': data.timestamp
+                                'leave_at': data.leaveAt
                               };
                             }).toList()
                           }
                         );
                         print('result: ${res.data}');
-                        characteristicCommand.write(utf8.encode("clear"));
+                        // characteristicCommand.write(utf8.encode("clear"));
                         refreshData();
                       } on DioError catch (e) {
                         if (e.response != null) {
@@ -466,7 +473,7 @@ class BoxList extends StatelessWidget {
             'อยู่ในระยะเป็นเวลา ${convertTimestampToTime(data.stayInMilliSecond)}'
           ),
           Text(
-            'ออกไปเมื่อ ${convertTimestampToDate(new DateTime.fromMillisecondsSinceEpoch(data.timestamp * 1000))}'
+            'ออกไปเมื่อ ${convertTimestampToDate(new DateTime.fromMillisecondsSinceEpoch(data.leaveAt * 1000))}'
           ),
         ],
       ),
