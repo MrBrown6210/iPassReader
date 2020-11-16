@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -11,6 +12,7 @@ String rowDataUUID = "00002ad1-0000-1000-8000-00805f9b34fb";
 String identifyUUID = "00002ac3-0000-1000-8000-00805f9b34fb";
 String timeUUID = "00002a0f-0000-1000-8000-00805f9b34fb";
 String commandUUID = "00002b26-0000-1000-8000-00805f9b34fb";
+String debugUUID = "00002b26-0000-1000-8000-xxxxxxxxxxx";
 
 List<Data> dataToRowDataList(String rawData) {
   List<Data> ds = [];
@@ -40,11 +42,14 @@ class Data {
 
 class _DeviceScreen extends State<DeviceScreen> {
 
+  bool isProduction = false;
+
   List<BluetoothService> xservices = [];
   List<IPass> characteristicsData = [];
 
   bool isDataEnable = false;
   List<Data> datas = [];
+  String recordStatus = '';
 
   bool isDateEnable = false;
   int date = 0;
@@ -56,6 +61,8 @@ class _DeviceScreen extends State<DeviceScreen> {
   bool isUploading = false;
 
   String uuid = "";
+
+  String debugStr = "";
 
   final commandTextFieldController = TextEditingController();
 
@@ -70,32 +77,53 @@ class _DeviceScreen extends State<DeviceScreen> {
   String startFlag = 'START';
   String endFlag = 'END';
   String rowData = '';
+  StreamSubscription<dynamic> subscription;
 
   Future<void> updateRowData(BluetoothCharacteristic characteristic) async {
+    print("request more data");
     List<int> data =  await characteristic.read();
     String rawData = utf8.decode(data);
     print('rawData: $rawData');
+    setState(() {
+      recordStatus = rawData;
+    });
     if (rawData == startFlag) {
       rowData = '';
       setState(() {
         rawData = '';
+      });
+      var future = new Future.delayed(const Duration(seconds: 10));
+      subscription = future.asStream().listen((event) {
+        print('Timeout! create list now');
+        updateRecordsFromRowData();
       });
       await updateRowData(characteristic);
       return;
     }
 
     if (rawData == endFlag) {
-      List<Data> records = recordsFromRowData(rowData);
-      setState(() {
-        isDataEnable = true;
-        datas = records;
-      });
+      updateRecordsFromRowData();
+      subscription.cancel();
       return;
     }
 
     rowData += rawData;
 
+    subscription.cancel();
+    var future = new Future.delayed(const Duration(seconds: 10));
+    subscription = future.asStream().listen((event) {
+      print('Timeout! create list now');
+      updateRecordsFromRowData();
+    });
     await updateRowData(characteristic);
+  }
+
+  void updateRecordsFromRowData() {
+    List<Data> records = recordsFromRowData(rowData);
+    setState(() {
+      isDataEnable = true;
+      datas = records;
+    });
   }
 
   List<Data> recordsFromRowData(String rowData) {
@@ -107,7 +135,9 @@ class _DeviceScreen extends State<DeviceScreen> {
         continue;
       }
 
-      RegExp exp = new RegExp(r"\@([\S]{36}):([0-9]+)\?([0-9]+)");
+      print(split);
+
+      RegExp exp = new RegExp(r"\@([\S]{4}):([0-9]+)\?([0-9]+)");
       RegExpMatch match = exp.firstMatch(split);
       if (match == null) continue;
       print("1--${match.group(0)}");
@@ -168,6 +198,19 @@ class _DeviceScreen extends State<DeviceScreen> {
             isCommandEnable = true;
           });
         }
+
+        if (characteristic.uuid.toString() == debugUUID) {
+          if (!characteristic.isNotifying) {
+            characteristic.setNotifyValue(true);
+            characteristic.value.listen((value) {
+              String data = utf8.decode(value);
+              setState(() {
+                debugStr += "$data\n";
+              });
+            });
+          }
+        }
+
       }
     }
     // services.forEach((service) async => service.characteristics.forEach((characteristic) async {
@@ -282,10 +325,58 @@ class _DeviceScreen extends State<DeviceScreen> {
               ),
               SliverToBoxAdapter(
                 child: Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  width: double.infinity,
+                  padding: EdgeInsets.all(4),
+                  child: OutlineButton(
+                    child: isUploading ? Text('UPLOADING') : Text('UPLOAD TO SERVER'),
+                    onPressed: () async {
+                      if (isUploading) return;
+                      setState(() {
+                        isUploading = true;
+                      });
+
+                      try {
+                        var dio = Dio();
+                        var res = await dio.post(
+                          "http://64.225.38.121:3030/tracks/multiple",
+                          data: {
+                            "items": datas.map((data) {
+                              return {
+                                'stay': data.stayInMilliSecond,
+                                'owner': uuid.substring(uuid.length - 4).toLowerCase(),
+                                'found': data.id,
+                                'leave_at': data.leaveAt
+                              };
+                            }).toList()
+                          }
+                        );
+                        print('result: ${res.data}');
+                        // characteristicCommand.write(utf8.encode("clear"));
+                        refreshData();
+                      } on DioError catch (e) {
+                        if (e.response != null) {
+                          print(e.response.data);
+                        }
+                        print('error: ${e.message}');
+                      } finally {
+                        setState(() {
+                          isUploading = false;
+                        });
+                      }
+                    },
+                  ),  
+                )
+              ),
+              SliverToBoxAdapter(
+                child: Container(
                   margin: const EdgeInsets.fromLTRB(4, 0, 4, 0),
                   padding: EdgeInsets.fromLTRB(4, 10, 4, 0),
                   child: Text(
-                    'Records',
+                    'Records $recordStatus',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -316,87 +407,9 @@ class _DeviceScreen extends State<DeviceScreen> {
                   ),
                   width: double.infinity,
                   padding: EdgeInsets.all(4),
-                  child: OutlineButton(
-                    child: isUploading ? Text('UPLOADING') : Text('UPLOAD TO SERVER'),
-                    onPressed: () async {
-                      if (isUploading) return;
-                      setState(() {
-                        isUploading = true;
-                      });
-
-                      try {
-                        var dio = Dio();
-                        var res = await dio.post(
-                          "http://172.16.2.149:3030/tracks/multiple",
-                          data: {
-                            "items": datas.map((data) {
-                              return {
-                                'stay': data.stayInMilliSecond,
-                                'owner': uuid.toLowerCase(),
-                                'found': data.id,
-                                'leave_at': data.leaveAt
-                              };
-                            }).toList()
-                          }
-                        );
-                        print('result: ${res.data}');
-                        // characteristicCommand.write(utf8.encode("clear"));
-                        refreshData();
-                      } on DioError catch (e) {
-                        if (e.response != null) {
-                          print(e.response.data);
-                        }
-                        print('error: ${e.message}');
-                      } finally {
-                        setState(() {
-                          isUploading = false;
-                        });
-                      }
-
-                      // var url = "http://128.199.205.55:3030/records";
-                      // var res = await http.post(
-                      //   url,
-                      //   headers: <String, String>{
-                      //     'Content-Type': 'application/json',
-                      //   },
-                      //   body: json.encode({
-                      //     'device': widget.result.device.name,
-                      //     'data': datas.map((data) {
-                      //       return {
-                      //         "id": data.id,
-                      //         "stayInMilliSecond": data.stayInMilliSecond,
-                      //         "timestamp": data.timestamp
-                      //       };
-                      //     }).toList()
-                      //   })
-                      // ).catchError((onError) {print(onError); isUploading = false;});
-                      // setState(() {
-                      //   isUploading = false;
-                      // });
-                      // print(res.statusCode);
-                      // print(res.body);
-                    },
-                  ),  
+                  child: Text(debugStr),
                 )
               )
-              // SliverPadding(
-              //   padding: const EdgeInsets.all(6),
-              //   sliver: SliverToBoxAdapter(
-              //     child: Container(
-              //       child: Column(
-              //         crossAxisAlignment: CrossAxisAlignment.start,
-              //         mainAxisSize: MainAxisSize.min,
-              //         children: [
-              //           Text('test'),
-              //           Text('test'),
-              //           Text('test'),
-              //           Text('test'),
-              //           xservices[0].characteristics[0].serviceUuid
-              //         ],
-              //       )
-              //     ),
-              //   ),
-              // ),
             ],
           ),
         ),

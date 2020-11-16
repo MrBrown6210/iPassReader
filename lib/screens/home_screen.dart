@@ -1,4 +1,4 @@
-import 'dart:convert';
+// import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -6,7 +6,7 @@ import 'package:flutter_blue/flutter_blue.dart';
 import 'package:hello_world/screens/screens.dart';
 import 'package:hello_world/widgets/circle_button.dart';
 
-import 'package:http/http.dart' as http;
+// import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -41,7 +41,7 @@ class _HomeScreen extends State<HomeScreen> {
       //   print('${r.toString()}');
       // }
     });
-    scan();
+    // scan();
     // testHttp();
   }
 
@@ -51,7 +51,7 @@ class _HomeScreen extends State<HomeScreen> {
     setState(() {
       isScanning = true;
     });
-    await blue.startScan(timeout: Duration(seconds: 15));
+    await blue.startScan(timeout: Duration(seconds: 20));
     setState(() {
       isScanning = false;
     });
@@ -162,8 +162,8 @@ class _HomeScreen extends State<HomeScreen> {
 
                       try {
                         print('connecting');
-                        list[index].device.connect(timeout: Duration(seconds: 15));
-                        await list[index].device.state.firstWhere((s) => s == BluetoothDeviceState.connected).timeout(Duration(seconds: 15));
+                        list[index].device.connect(timeout: Duration(seconds: 20));
+                        await list[index].device.state.firstWhere((s) => s == BluetoothDeviceState.connected).timeout(Duration(seconds: 20));
                         // await list[index].device.state.firstWhere(((state) => state == BluetoothDeviceState.connected));
                         Navigator.push(context, MaterialPageRoute(builder: (context) => DeviceScreen(result: list[index])));
                       } on Exception catch (exception) {
