@@ -86,48 +86,48 @@ class _HomeScreen extends State<HomeScreen> {
                 if (isScanning) return;
                 print('search'); scan(); 
               }),
-              CircleButton(icon: Icons.add_link, iconSize: 30, onPressed: () async {
-                print("dio");
-                try {
-                  var dio = Dio();
-                  var res = await dio.post(
-                    "http://192.168.1.105:3030/tracks/multiple",
-                    data: {
-                      "items": [
-                        {
-                          'stay': 12000,
-                          'owner': 't1',
-                          'found': 't2',
-                          'timestamp': 1598939356
-                        },
-                        {
-                          'stay': 12000,
-                          'owner': 't2',
-                          'found': 't3',
-                          'timestamp': 1598939356
-                        },
-                      ]
-                    }
-                  );
-                  print('test $res');
-                } on DioError catch(e) {
-                  if (e.response != null) {
-                    print(e.response.data);
-                  }
-                  print('error: ${e.message}');
-                }
-                // var url = "http://128.199.205.55:3030/recordsxad";
-                // var res = await http.post(
-                //   url,
-                //   headers: <String, String>{
-                //     'Content-Type': 'application/json',
-                //   },
-                //   body: json.encode({
-                //     'owner': 'x'
-                //   })
-                // ).catchError((onError) { print('error: ${onError.toString()}'); });
-                // print('res $res');
-              })
+              // CircleButton(icon: Icons.add_link, iconSize: 30, onPressed: () async {
+              //   print("dio");
+              //   try {
+              //     var dio = Dio();
+              //     var res = await dio.post(
+              //       "http://192.168.1.105:3030/tracks/multiple",
+              //       data: {
+              //         "items": [
+              //           {
+              //             'stay': 12000,
+              //             'owner': 't1',
+              //             'found': 't2',
+              //             'timestamp': 1598939356
+              //           },
+              //           {
+              //             'stay': 12000,
+              //             'owner': 't2',
+              //             'found': 't3',
+              //             'timestamp': 1598939356
+              //           },
+              //         ]
+              //       }
+              //     );
+              //     print('test $res');
+              //   } on DioError catch(e) {
+              //     if (e.response != null) {
+              //       print(e.response.data);
+              //     }
+              //     print('error: ${e.message}');
+              //   }
+              //   // var url = "http://128.199.205.55:3030/recordsxad";
+              //   // var res = await http.post(
+              //   //   url,
+              //   //   headers: <String, String>{
+              //   //     'Content-Type': 'application/json',
+              //   //   },
+              //   //   body: json.encode({
+              //   //     'owner': 'x'
+              //   //   })
+              //   // ).catchError((onError) { print('error: ${onError.toString()}'); });
+              //   // print('res $res');
+              // })
             ],
           ),
           SliverList(

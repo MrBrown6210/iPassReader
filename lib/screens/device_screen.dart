@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 // import 'package:flutter_blue/gen/flutterblue.pbserver.dart';
@@ -59,6 +60,7 @@ class _DeviceScreen extends State<DeviceScreen> {
   BluetoothCharacteristic characteristicCommand;
 
   bool isUploading = false;
+  bool isDebug = false;
 
   String uuid = "";
 
@@ -342,7 +344,7 @@ class _DeviceScreen extends State<DeviceScreen> {
                       try {
                         var dio = Dio();
                         var res = await dio.post(
-                          "http://64.225.38.121:3030/tracks/multiple",
+                          "http://api.ipass.exbiz.co/tracks/multiple",
                           data: {
                             "items": datas.map((data) {
                               return {
@@ -375,11 +377,34 @@ class _DeviceScreen extends State<DeviceScreen> {
                 child: Container(
                   margin: const EdgeInsets.fromLTRB(4, 0, 4, 0),
                   padding: EdgeInsets.fromLTRB(4, 10, 4, 0),
+                  child: RichText(
+                    text: TextSpan(
+                      text: 'Records',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black
+                      ),
+                      recognizer: TapGestureRecognizer()..onTap = () => {
+                        setState(() {
+                          isDebug = !isDebug;
+                          print('isDebug: $isDebug');
+                        })
+                      }
+                    ),
+                  ),
+                ),
+              ),
+              if (isDebug) SliverToBoxAdapter(
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(4, 0, 4, 0),
+                  padding: EdgeInsets.fromLTRB(4, 10, 4, 0),
                   child: Text(
-                    'Records $recordStatus',
+                    'debug: $recordStatus',
                     style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      fontWeight: FontWeight.normal,
+                      color: Colors.grey
                     ),
                   )
                 ),
